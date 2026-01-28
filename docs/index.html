@@ -1,6 +1,5 @@
 <!doctype html>
 <html lang="pt-BR">
-
 <head>
   <meta charset="utf-8">
   <title>ERGOTOP</title>
@@ -13,54 +12,51 @@
     }
 
     body {
-      font-family: Arial, sans-serif;
       margin: 0;
+      font-family: Arial, sans-serif;
       background: #111;
       color: white;
       display: flex;
       flex-direction: column;
-      min-height: 100vh;
+      height: 100vh;
       overflow: hidden;
     }
 
     /* ===== HEADER ===== */
     #header {
-      width: 100%;
-      min-height: 60px;
-      background-color: #081925;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+      background: #081925;
       padding: 10px 16px;
-      gap: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
       flex-wrap: wrap;
     }
 
     #logo-links {
       display: flex;
       align-items: center;
-      gap: 20px;
+      gap: 16px;
       flex-wrap: wrap;
     }
 
     #logo-links h2 {
       margin: 0;
       color: gold;
-      font-size: 30px;
+      font-size: 26px;
     }
 
     #logo-links a {
-      color: #ffffff;
+      color: white;
       text-decoration: none;
       font-weight: bold;
       display: flex;
       align-items: center;
       gap: 6px;
-      font-size: 20px;
     }
 
     #logo-img {
-      height: 24px;
+      height: 22px;
     }
 
     #controls {
@@ -69,39 +65,31 @@
     }
 
     #controls button {
-      background-color: #eee;
       border: none;
       border-radius: 6px;
       padding: 6px 10px;
-      cursor: pointer;
       font-weight: bold;
-      font-size: 14px;
+      cursor: pointer;
     }
 
-    /* ===== GAME AREA ===== */
+    /* ===== GAME ===== */
     #game-container {
       flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
       background: #081925;
+      display: flex;
+      justify-content: center;
+      align-items: center;
       overflow: hidden;
     }
 
     canvas {
       display: block;
-      background: #000;
+      background: black;
     }
 
-    /* ===== MOBILE AJUSTES ===== */
     @media (max-width: 768px) {
       #logo-links h2 {
         font-size: 18px;
-      }
-
-      #controls button {
-        font-size: 13px;
-        padding: 6px 8px;
       }
     }
   </style>
@@ -109,107 +97,110 @@
 
 <body>
 
-  <!-- HEADER -->
   <div id="header">
     <div id="logo-links">
       <h2>ERGOTOP</h2>
-      <a href="https://sites.google.com/ifsuldeminas.edu.br/programa-educativo-2/in%C3%ADcio">🌐 Site da Pesquisa</a>
+      <a href="https://sites.google.com/ifsuldeminas.edu.br/programa-educativo-2/in%C3%ADcio">🌐 Pesquisa</a>
       <a href="https://www.raylib.com" target="_blank">
-        <img id="logo-img" src="https://www.raylib.com/favicon.ico" alt="Raylib Logo">
+        <img id="logo-img" src="https://www.raylib.com/favicon.ico">
         Raylib
       </a>
     </div>
 
     <div id="controls">
-      <button onclick="Module.requestFullscreen(false, false)">🖵 FULLSCREEN</button>
-      <button onclick="toggleAudio()" id="btn-audio">🔇 MUTE</button>
+      <button onclick="goFullscreen()">🖵 FULLSCREEN</button>
+      <button id="btn-audio" onclick="toggleAudio()">🔇 MUTE</button>
     </div>
   </div>
 
-  <!-- GAME -->
   <div id="game-container">
-    <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
+    <canvas id="canvas" class="emscripten" tabindex="-1"></canvas>
   </div>
 
-  <!-- EMSCRIPTEN / AUDIO -->
   <script>
-    var audioBtn = null;
-  const audioContexList = [];
+    /* ================= AUDIO ================= */
+    let audioBtn = null;
+    const audioContexts = [];
 
-  function toggleAudio() {
-    if (!audioBtn) audioBtn = document.querySelector("#btn-audio");
-    let muted = true;
-
-    audioContexList.forEach(ctx => {
-      if (ctx.state === "suspended") {
-        ctx.resume();
-        muted = false;
-      } else {
-        ctx.suspend();
+    self.AudioContext = new Proxy(self.AudioContext, {
+      construct(target, args) {
+        const ctx = new target(...args);
+        audioContexts.push(ctx);
+        return ctx;
       }
     });
 
-    audioBtn.textContent = muted ? "🔈 RESUME" : "🔇 MUTE";
-  }
+    function toggleAudio() {
+      if (!audioBtn) audioBtn = document.getElementById("btn-audio");
+      let muted = true;
 
-  self.AudioContext = new Proxy(self.AudioContext, {
-    construct(target, args) {
-      const ctx = new target(...args);
-      audioContexList.push(ctx);
-      return ctx;
-    }
-  });
+      audioContexts.forEach(ctx => {
+        if (ctx.state === "suspended") {
+          ctx.resume();
+          muted = false;
+        } else {
+          ctx.suspend();
+        }
+      });
 
-  var Module = {
-    canvas: (() => document.getElementById("canvas"))(),
-    setStatus: text => console.log(text)
-  };
-
-  const ASPECT = 16 / 9;
-
-  function resizeCanvas() {
-    const canvas = Module.canvas;
-    const container = document.getElementById("game-container");
-
-    if (!canvas || !container) return;
-
-    const cw = container.clientWidth;
-    const ch = container.clientHeight;
-
-    // proteção contra valores inválidos (bug ao sair do fullscreen)
-    if (cw <= 0 || ch <= 0) return;
-
-    let width = cw;
-    let height = width / ASPECT;
-
-    if (height > ch) {
-      height = ch;
-      width = height * ASPECT;
+      audioBtn.textContent = muted ? "🔈 RESUME" : "🔇 MUTE";
     }
 
-    canvas.style.width = `${Math.floor(width)}px`;
-    canvas.style.height = `${Math.floor(height)}px`;
-  }
+    /* ================= EMSCRIPTEN ================= */
+    const ASPECT = 16 / 9;
 
-  function goFullscreen() {
-    Module.requestFullscreen(false, false);
-    setTimeout(resizeCanvas, 300);
-  }
+    var Module = {
+      canvas: document.getElementById("canvas"),
+      onRuntimeInitialized() {
+        resizeCanvas();
+      }
+    };
 
-  // 🔑 evento CRÍTICO
-  document.addEventListener("fullscreenchange", () => {
-    setTimeout(resizeCanvas, 300);
-  });
+    function resizeCanvas() {
+      const canvas = Module.canvas;
+      const container = document.getElementById("game-container");
 
-  window.addEventListener("resize", resizeCanvas);
-  window.addEventListener("orientationchange", () => {
-    setTimeout(resizeCanvas, 200);
-  });
-  window.addEventListener("load", resizeCanvas);
+      const cw = container.clientWidth;
+      const ch = container.clientHeight;
+
+      if (cw <= 0 || ch <= 0) return;
+
+      let w = cw;
+      let h = w / ASPECT;
+
+      if (h > ch) {
+        h = ch;
+        w = h * ASPECT;
+      }
+
+      const dpr = window.devicePixelRatio || 1;
+
+      /* tamanho visual */
+      canvas.style.width  = `${Math.floor(w)}px`;
+      canvas.style.height = `${Math.floor(h)}px`;
+
+      /* tamanho interno (CRÍTICO para Raylib) */
+      canvas.width  = Math.floor(w * dpr);
+      canvas.height = Math.floor(h * dpr);
+    }
+
+    function goFullscreen() {
+      Module.requestFullscreen(false, false);
+      setTimeout(resizeCanvas, 300);
+    }
+
+    document.addEventListener("fullscreenchange", () => {
+      setTimeout(resizeCanvas, 300);
+    });
+
+    window.addEventListener("resize", resizeCanvas);
+    window.addEventListener("orientationchange", () => {
+      setTimeout(resizeCanvas, 200);
+    });
   </script>
 
   <!-- JOGO -->
   <script src="main.js"></script>
-</body>
 
+</body>
 </html>
