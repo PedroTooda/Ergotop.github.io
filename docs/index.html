@@ -86,17 +86,11 @@
       justify-content: center;
       background: #081925;
       overflow: hidden;
-      padding: 8px;
     }
 
     canvas {
-      background: #000;
       display: block;
-      max-width: 100%;
-      max-height: 100%;
-      width: auto;
-      height: auto;
-      aspect-ratio: 16 / 9; /* AJUSTE PARA O ASPECT DO SEU JOGO */
+      background: #000;
     }
 
     /* ===== MOBILE AJUSTES ===== */
@@ -140,62 +134,82 @@
   <!-- EMSCRIPTEN / AUDIO -->
   <script>
     var audioBtn = null;
-    const audioContexList = [];
+  const audioContexList = [];
 
-    function toggleAudio() {
-      if (!audioBtn) audioBtn = document.querySelector("#btn-audio");
-      let muted = true;
+  function toggleAudio() {
+    if (!audioBtn) audioBtn = document.querySelector("#btn-audio");
+    let muted = true;
 
-      audioContexList.forEach(ctx => {
-        if (ctx.state === "suspended") {
-          ctx.resume();
-          muted = false;
-        } else {
-          ctx.suspend();
-        }
-      });
-
-      audioBtn.textContent = muted ? "🔈 RESUME" : "🔇 MUTE";
-    }
-
-    self.AudioContext = new Proxy(self.AudioContext, {
-      construct(target, args) {
-        const ctx = new target(...args);
-        audioContexList.push(ctx);
-        return ctx;
+    audioContexList.forEach(ctx => {
+      if (ctx.state === "suspended") {
+        ctx.resume();
+        muted = false;
+      } else {
+        ctx.suspend();
       }
     });
 
-    var Module = {
-      canvas: (() => document.getElementById("canvas"))(),
-      setStatus: text => console.log(text)
-    };
+    audioBtn.textContent = muted ? "🔈 RESUME" : "🔇 MUTE";
+  }
 
-    /* ===== AJUSTE DINÂMICO DO CANVAS ===== */
-    function resizeCanvas() {
-      const canvas = Module.canvas;
-      const container = document.getElementById("game-container");
+  self.AudioContext = new Proxy(self.AudioContext, {
+    construct(target, args) {
+      const ctx = new target(...args);
+      audioContexList.push(ctx);
+      return ctx;
+    }
+  });
 
-      const aspect = 16 / 9; // MESMO ASPECT DO JOGO
-      let width = container.clientWidth;
-      let height = container.clientHeight;
+  var Module = {
+    canvas: (() => document.getElementById("canvas"))(),
+    setStatus: text => console.log(text)
+  };
 
-      if (width / height > aspect) {
-        width = height * aspect;
-      } else {
-        height = width / aspect;
-      }
+  const ASPECT = 16 / 9;
 
-      canvas.style.width = width + "px";
-      canvas.style.height = height + "px";
+  function resizeCanvas() {
+    const canvas = Module.canvas;
+    const container = document.getElementById("game-container");
+
+    if (!canvas || !container) return;
+
+    const cw = container.clientWidth;
+    const ch = container.clientHeight;
+
+    // proteção contra valores inválidos (bug ao sair do fullscreen)
+    if (cw <= 0 || ch <= 0) return;
+
+    let width = cw;
+    let height = width / ASPECT;
+
+    if (height > ch) {
+      height = ch;
+      width = height * ASPECT;
     }
 
-    window.addEventListener("resize", resizeCanvas);
-    window.addEventListener("orientationchange", resizeCanvas);
-    window.addEventListener("load", resizeCanvas);
+    canvas.style.width = `${Math.floor(width)}px`;
+    canvas.style.height = `${Math.floor(height)}px`;
+  }
+
+  function goFullscreen() {
+    Module.requestFullscreen(false, false);
+    setTimeout(resizeCanvas, 300);
+  }
+
+  // 🔑 evento CRÍTICO
+  document.addEventListener("fullscreenchange", () => {
+    setTimeout(resizeCanvas, 300);
+  });
+
+  window.addEventListener("resize", resizeCanvas);
+  window.addEventListener("orientationchange", () => {
+    setTimeout(resizeCanvas, 200);
+  });
+  window.addEventListener("load", resizeCanvas);
   </script>
 
   <!-- JOGO -->
   <script src="main.js"></script>
 </body>
+
 </html>
